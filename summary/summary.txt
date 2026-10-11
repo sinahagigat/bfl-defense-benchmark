@@ -1,0 +1,2 @@
+rows: 216
+mnist: 3 seeds, 216 runs, mean run time 90s

@@ -1,0 +1,4 @@
+clients,deploy_gas,register_all_gas,submit_update_gas_mean,decision_single_gas_mean,decisions_batch_gas_mean,decisions_batch_gas_per_client,commit_global_gas_mean,total_gas_per_round
+10,628912,477715,48440,31938,110318,11032,47809,642525
+50,628912,2292627,48439,31938,452574,9051,47809,2922337
+100,628912,4561255,48439,31938,880370,8804,47809,5772103
