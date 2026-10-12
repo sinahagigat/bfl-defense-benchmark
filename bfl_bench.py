@@ -24,6 +24,9 @@ Attacks (applied by a fixed set of malicious clients):
   signflip    malicious clients send the negated honest update
   scaling     label-flipped update boosted by a large factor (model-replacement style)
   gaussian    malicious clients send random Gaussian noise
+  alie        "A little is enough" (Baruch et al., 2019): malicious clients estimate the mean and
+              standard deviation of honest updates from their own honest updates and all send
+              mean - z * std, with z chosen so the update stays inside the spread of honest updates
 
 Results are appended to a CSV file, one line per run; finished runs are skipped on restart,
 so the script can be stopped and resumed at any time.
@@ -46,7 +49,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 DEFENSES = ["fedavg", "krum", "multikrum", "median", "trimmed", "fltrust", "cosine", "committee"]
-ATTACKS = ["none", "labelflip", "signflip", "scaling", "gaussian"]
+ATTACKS = ["none", "labelflip", "signflip", "scaling", "gaussian", "alie"]
 FILTERING = {"krum", "multikrum", "fltrust", "cosine", "committee"}  # defenses that flag clients
 
 
@@ -253,6 +256,10 @@ def run_one(cfg, data, dataset, attack, ratio, defense, seed, device):
     mal_ids = rng.choice(n, size=n_mal, replace=False)
     malicious = np.zeros(n, dtype=bool); malicious[mal_ids] = True
     f = max(n_mal, 1)  # number of tolerated attackers assumed by Krum / trimmed mean
+    # ALIE: z = Phi^-1((n - s) / n) with s = floor(n / 2 + 1) - n_mal supporters needed
+    from statistics import NormalDist
+    s_need = int(n / 2 + 1) - n_mal
+    alie_z = NormalDist().inv_cdf((n - s_need) / n) if n_mal > 0 else 0.0
 
     cx = [xtr[p].to(device) for p in parts]
     cy = [ytr[p].to(device) for p in parts]
@@ -298,6 +305,11 @@ def run_one(cfg, data, dataset, attack, ratio, defense, seed, device):
                     d = -d
             ups.append(d.cpu())
         U = torch.stack(ups)
+        if attack == "alie" and n_mal > 0:
+            mal_t = torch.as_tensor(malicious)
+            own = U[mal_t]                       # honest updates computed on the attackers' own data
+            mu, sd = own.mean(0), own.std(0, unbiased=False)
+            U[mal_t] = (mu - alie_z * sd)[None, :]
         ctx["gvec"] = gvec.cpu()
         ta = time.time()
         agg, mask = aggregate(defense, U, sizes, f, ctx)
