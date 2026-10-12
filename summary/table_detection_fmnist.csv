@@ -1,0 +1,9 @@
+﻿,labelflip 10%,labelflip 30%,signflip 10%,signflip 30%,scaling 10%,scaling 30%,gaussian 10%,gaussian 30%,alie 10%,alie 30%
+FedAvg (no defense),n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a
+Krum,100 / 98,100 / 97,100 / 98,100 / 97,100 / 98,100 / 97,100 / 98,100 / 97,80 / 100,93 / 100
+Multi-Krum,99 / 0,98 / 1,40 / 7,55 / 19,100 / 0,100 / 0,100 / 0,100 / 0,0 / 11,0 / 43
+Median,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a
+Trimmed mean,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a,n/a
+FLTrust,60 / 24,64 / 25,81 / 24,80 / 24,59 / 24,64 / 24,48 / 24,50 / 24,13 / 25,20 / 24
+Cosine filter,100 / 15,57 / 8,93 / 4,64 / 3,100 / 15,100 / 18,100 / 10,100 / 5,0 / 14,0 / 5
+Committee + reputation,37 / 2,68 / 0,9 / 3,9 / 3,100 / 2,84 / 0,76 / 2,45 / 1,0 / 5,0 / 14

@@ -1,2 +1,3 @@
-rows: 216
-mnist: 3 seeds, 216 runs, mean run time 90s
+rows: 528
+fmnist: 3 seeds, 264 runs, mean run time 91s
+mnist: 3 seeds, 264 runs, mean run time 94s
