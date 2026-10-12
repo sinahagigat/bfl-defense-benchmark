@@ -15,15 +15,33 @@ included.
 * Data: MNIST and Fashion-MNIST, 50 clients, non-IID split (Dirichlet, alpha = 0.5), 30 rounds,
   1 local epoch, SGD (lr 0.05, batch 32), small CNN (2 conv layers 16/32, FC 64).
 * Attacks: label flipping, sign flipping, scaling (label-flipped update x10), Gaussian noise,
-  and the adaptive "a little is enough" attack (ALIE, Baruch et al., 2019), in which the
-  attackers compute honest updates on their own data in every round and send mean - z * std
-  of those updates (they do not see honest clients' updates);
-  10% and 30% malicious clients; plus a no-attack setting.
+  and a non-omniscient form of the adaptive "a little is enough" attack (ALIE, Baruch et al.,
+  2019), in which the attackers compute honest updates on their own data in every round and send
+  mean - z * std of those updates (they do not see honest clients' updates), with
+  z = Phi^-1((n - s) / n), s = floor(n / 2 + 1) - m, so z = 0.20 for 10% and 0.77 for 30% attackers.
+  Variants in which the attackers also see the honest clients' updates can be stronger.
+* Attacker shares: 10% and 30% malicious clients, plus a no-attack setting.
 * Defenses: FedAvg (no defense), Krum, Multi-Krum, coordinate-wise median, trimmed mean,
   FLTrust (100-sample root set), cosine-similarity filter (mean - 1 std rule), and a
   committee-validation scheme with reputation weighting that emulates blockchain-native
   detection (5-member committee drawn each round; colluding members vote for malicious updates).
 * 3 seeds (1, 2, 3) per setting: 264 runs per dataset, 528 runs in total.
+
+## Detection metrics (Table 11)
+
+For the rules that accept or reject individual updates, every run counts, over all 30 rounds, how many malicious and honest
+updates were rejected (`bfl_bench.py`, variables `tp`, `fp`, `fn`, `tn`):
+
+* `det_recall` = rejected malicious updates / all malicious updates
+* `det_fpr` = rejected honest updates / all honest updates
+
+Table 11 reports the mean of these two values over the three seeds. Rules that keep a fixed
+number of updates give fixed rates by construction: Krum keeps one update per round, so its
+false-positive rate is 44/45 (10% attackers) or 34/35 (30% attackers); Multi-Krum always
+discards m updates, so when it accepts every ALIE update its false-positive rate is 5/45 or
+15/35. Table 11 lists Multi-Krum, FLTrust, the cosine filter and the committee; Krum (fixed
+rates, see above) is in `results.csv` but not in Table 11, and the median and the trimmed mean
+do not accept or reject whole updates.
 
 ## Files
 
@@ -60,7 +78,10 @@ it installs directly on Linux, macOS and Google Colab):
     pip install -r requirements-gas.txt
     python gas_bench.py
 
-Gas is deterministic, so `gas_results.csv` does not depend on the machine.
+Gas is deterministic, so `gas_results.csv` does not depend on the machine. The contract was
+compiled with solc 0.8.24, and the measurement runs on the in-memory test chain of
+`eth-tester` (py-evm backend); it covers only the contract in `FLLedger.sol`, not model storage,
+identity management or production consensus.
 
 ## Limitations
 
