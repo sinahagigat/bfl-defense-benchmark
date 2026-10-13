@@ -51,6 +51,7 @@ do not accept or reject whole updates.
 | `summarize.py` | Builds the tables and figure in `summary/` from `results.csv` |
 | `gas_bench.py` | Gas cost of the on-chain layer on a local in-memory Ethereum chain |
 | `FLLedger.sol` | Smart contract measured by `gas_bench.py` (compiled bytecode is embedded) |
+| `requirements-lock.txt` | Exact package versions used to produce `results.csv` |
 | `results.csv` | Results of the 528 runs reported in the paper (Tables 10 and 11) |
 | `gas_results.csv` | Gas measurements reported in the paper |
 | `summary/` | Tables and figure produced by `summarize.py` |
@@ -59,7 +60,7 @@ do not accept or reject whole updates.
 
 Python 3.10 or newer.
 
-    pip install -r requirements.txt
+    pip install -r requirements.txt               # or requirements-lock.txt for the exact versions used
     python bfl_bench.py --quick                  # smoke test, about 2 minutes
     python bfl_bench.py --datasets mnist fmnist  # full grid (528 runs), about 14 hours on a laptop CPU
     python summarize.py                          # tables and figures in summary/
