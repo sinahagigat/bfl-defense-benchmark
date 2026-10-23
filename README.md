@@ -27,7 +27,7 @@ included.
   detection (5-member committee drawn each round; colluding members vote for malicious updates).
 * 3 seeds (1, 2, 3) per setting: 264 runs per dataset, 528 runs in total.
 
-## Detection metrics (Table 11)
+## Detection metrics (Table 13)
 
 For the rules that accept or reject individual updates, every run counts, over all 30 rounds, how many malicious and honest
 updates were rejected (`bfl_bench.py`, variables `tp`, `fp`, `fn`, `tn`):
@@ -35,12 +35,12 @@ updates were rejected (`bfl_bench.py`, variables `tp`, `fp`, `fn`, `tn`):
 * `det_recall` = rejected malicious updates / all malicious updates
 * `det_fpr` = rejected honest updates / all honest updates
 
-Table 11 reports the mean of these two values over the three seeds. Rules that keep a fixed
+Table 13 reports the mean of these two values over the three seeds. Rules that keep a fixed
 number of updates give fixed rates by construction: Krum keeps one update per round, so its
 false-positive rate is 44/45 (10% attackers) or 34/35 (30% attackers); Multi-Krum always
 discards m updates, so when it accepts every ALIE update its false-positive rate is 5/45 or
-15/35. Table 11 lists Multi-Krum, FLTrust, the cosine filter and the committee; Krum (fixed
-rates, see above) is in `results.csv` but not in Table 11, and the median and the trimmed mean
+15/35. Table 13 lists Multi-Krum, FLTrust, the cosine filter and the committee; Krum (fixed
+rates, see above) is in `results.csv` but not in Table 13, and the median and the trimmed mean
 do not accept or reject whole updates.
 
 ## Files
@@ -52,7 +52,7 @@ do not accept or reject whole updates.
 | `gas_bench.py` | Gas cost of the on-chain layer on a local in-memory Ethereum chain |
 | `FLLedger.sol` | Smart contract measured by `gas_bench.py` (compiled bytecode is embedded) |
 | `requirements-lock.txt` | Exact package versions used to produce `results.csv` |
-| `results.csv` | Results of the 528 runs reported in the paper (Tables 10 and 11) |
+| `results.csv` | Results of the 528 runs reported in the paper (Tables 12 and 13) |
 | `gas_results.csv` | Gas measurements reported in the paper |
 | `summary/` | Tables and figure produced by `summarize.py` |
 
@@ -65,8 +65,8 @@ Python 3.10 or newer.
     python bfl_bench.py --datasets mnist fmnist  # full grid (528 runs), about 14 hours on a laptop CPU
     python summarize.py                          # tables and figures in summary/
 
-`summary/table_accuracy_<dataset>.csv` corresponds to Table 10 and
-`summary/table_detection_<dataset>.csv` to Table 11 of the paper. All settings
+`summary/table_accuracy_<dataset>.csv` corresponds to Table 12 and
+`summary/table_detection_<dataset>.csv` to Table 13 of the paper. All settings
 (seeds, number of clients, rounds, learning rate, attack strengths) are command-line
 options of `bfl_bench.py` with the defaults used in the paper; `python bfl_bench.py --help`
 lists them. Runs are appended to `results.csv`, so an interrupted run can be resumed by
