@@ -23,7 +23,7 @@ ORDER = ["fedavg", "krum", "multikrum", "median", "trimmed", "fltrust", "cosine"
 NAMES = {"fedavg": "FedAvg (no defense)", "krum": "Krum", "multikrum": "Multi-Krum",
          "median": "Median", "trimmed": "Trimmed mean", "fltrust": "FLTrust",
          "cosine": "Cosine filter", "committee": "Committee + reputation"}
-ATT_ORDER = ["none", "labelflip", "signflip", "scaling", "gaussian", "alie"]
+ATT_ORDER = ["none", "labelflip", "signflip", "scaling", "gaussian", "alie", "minmax", "fang"]
 
 
 def col_label(att, r):

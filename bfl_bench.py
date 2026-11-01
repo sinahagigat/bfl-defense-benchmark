@@ -1,9 +1,11 @@
 """
 Small, reproducible benchmark of poisoning defenses for (blockchain-based) federated learning.
 
-One representative defense per detection family reviewed in the paper is run under identical
-conditions (same data split, same attacks, same malicious clients, same seeds):
+Statistical and similarity-based aggregation rules, a trust-based filter (FLTrust), and a simplified
+emulation of committee-based blockchain detection are run under the same data split, the same
+malicious clients, and the same seeds. Learning-based anomaly detectors are not included.
 
+Aggregation rules:
   fedavg      no defense (weighted federated averaging)
   krum        Krum (Blanchard et al., 2017)
   multikrum   Multi-Krum (Blanchard et al., 2017)
@@ -27,6 +29,14 @@ Attacks (applied by a fixed set of malicious clients):
   alie        "A little is enough" (Baruch et al., 2019): malicious clients estimate the mean and
               standard deviation of honest updates from their own honest updates and all send
               mean - z * std, with z chosen so the update stays inside the spread of honest updates
+  minmax      AGR-agnostic Min-Max attack (Shejwalkar and Houmansadr, NDSS 2021), full knowledge:
+              all malicious clients send mean - gamma * u, where u is the unit vector of the mean
+              honest update and gamma is the largest value (found by binary search) for which the
+              malicious update is no farther from any honest update than the largest distance
+              between two honest updates
+  fang        full-knowledge trimmed-mean attack of Fang et al. (USENIX Security 2020): for every
+              coordinate, each malicious client sends a value drawn beyond the smallest (or largest)
+              honest value, on the side opposite to the direction of the mean honest update (b = 2)
 
 Results are appended to a CSV file, one line per run; finished runs are skipped on restart,
 so the script can be stopped and resumed at any time.
@@ -49,7 +59,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 DEFENSES = ["fedavg", "krum", "multikrum", "median", "trimmed", "fltrust", "cosine", "committee"]
-ATTACKS = ["none", "labelflip", "signflip", "scaling", "gaussian", "alie"]
+ATTACKS = ["none", "labelflip", "signflip", "scaling", "gaussian", "alie", "minmax", "fang"]
 FILTERING = {"krum", "multikrum", "fltrust", "cosine", "committee"}  # defenses that flag clients
 
 
@@ -164,6 +174,52 @@ def krum_select(U, f, m):
     D.fill_diagonal_(float("inf"))
     scores = D.topk(k, dim=1, largest=False).values.sum(1)
     return scores.argsort()[:m]
+
+
+def minmax_update(B, tol=1e-5, max_iter=100):
+    """AGR-agnostic Min-Max attack (Shejwalkar and Houmansadr, NDSS 2021, Algorithm 1).
+
+    B holds the honest updates known to the attacker (one per row). The malicious update is
+    mu - gamma * u with u = mu / ||mu|| (the "inverse unit vector" perturbation), where gamma is the
+    largest value for which the maximum distance from the malicious update to any honest update
+    does not exceed the maximum distance between two honest updates.
+    """
+    mu = B.mean(0)
+    u = mu / mu.norm().clamp_min(1e-12)
+    bound = pairwise_sq_dists(B).max()
+    # gamma cannot exceed twice the largest honest distance; the search covers [0, 2 * gamma_init]
+    gamma_init = 2 * bound.sqrt().item()
+    def ok(g):
+        return ((B - (mu - g * u)[None, :]) ** 2).sum(1).max() <= bound
+    gamma, step, gamma_succ = gamma_init, gamma_init, 0.0
+    for _ in range(max_iter):
+        if abs(gamma_succ - gamma) <= tol:
+            break
+        if ok(gamma):
+            gamma_succ = gamma
+            gamma = gamma + step / 2
+        else:
+            gamma = gamma - step / 2
+        step = step / 2
+    return mu - gamma_succ * u, gamma_succ
+
+
+def fang_updates(B, n_mal, gen, b=2.0):
+    """Full-knowledge trimmed-mean attack (Fang et al., USENIX Security 2020, Section 4).
+
+    For coordinate j, s_j is the sign of the mean honest update. Where s_j > 0, every malicious
+    client draws its value uniformly from [min_j / b, min_j] if min_j > 0, or from [b * min_j, min_j]
+    otherwise; where s_j <= 0, from [max_j, b * max_j] if max_j > 0, or from [max_j / b, max_j]
+    otherwise. min_j and max_j are taken over the honest updates.
+    """
+    s = B.mean(0) > 0
+    lo, hi = B.min(0).values, B.max(0).values
+    a_low = torch.where(lo > 0, lo / b, lo * b)        # interval [a_low, lo] for s_j > 0
+    a_high = torch.where(hi > 0, hi * b, hi / b)       # interval [hi, a_high] for s_j <= 0
+    r = torch.rand(n_mal, B.shape[1], generator=gen)
+    low_vals = a_low + r * (lo - a_low)
+    high_vals = hi + r * (a_high - hi)
+    return torch.where(s[None, :], low_vals, high_vals)
 
 
 def aggregate(defense, U, sizes, f, ctx):
@@ -310,6 +366,13 @@ def run_one(cfg, data, dataset, attack, ratio, defense, seed, device):
             own = U[mal_t]                       # honest updates computed on the attackers' own data
             mu, sd = own.mean(0), own.std(0, unbiased=False)
             U[mal_t] = (mu - alie_z * sd)[None, :]
+        elif attack == "minmax" and n_mal > 0:
+            mal_t = torch.as_tensor(malicious)
+            u_mal, _ = minmax_update(U.clone())           # honest updates of all clients
+            U[mal_t] = u_mal[None, :]
+        elif attack == "fang" and n_mal > 0:
+            mal_t = torch.as_tensor(malicious)
+            U[mal_t] = fang_updates(U.clone(), n_mal, gen)  # honest updates of all clients
         ctx["gvec"] = gvec.cpu()
         ta = time.time()
         agg, mask = aggregate(defense, U, sizes, f, ctx)

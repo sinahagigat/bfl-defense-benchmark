@@ -5,8 +5,8 @@ Code and results for the controlled comparative experiment in the review
 Blockchain-based Federated Learning".
 
 The experiment compares statistical and similarity-based aggregation rules, a trust-based
-filter (FLTrust), and a simplified emulation of committee-based blockchain detection under
-identical conditions (same non-IID data split, same malicious clients, same seeds), and measures
+filter (FLTrust), and a simplified emulation of committee-based blockchain detection with the
+same non-IID data split, the same malicious clients, and the same seeds, and measures
 the gas cost of a minimal on-chain integrity layer. Learning-based anomaly detectors are not
 included.
 
@@ -18,14 +18,23 @@ included.
   and a non-omniscient form of the adaptive "a little is enough" attack (ALIE, Baruch et al.,
   2019), in which the attackers compute honest updates on their own data in every round and send
   mean - z * std of those updates (they do not see honest clients' updates), with
-  z = Phi^-1((n - s) / n), s = floor(n / 2 + 1) - m, so z = 0.20 for 10% and 0.77 for 30% attackers.
-  Variants in which the attackers also see the honest clients' updates can be stronger.
+  z = Phi^-1((n - s) / n), s = floor(n / 2 + 1) - f for f attackers, so z = 0.20 for 10% and 0.77
+  for 30% attackers.
+* Two full-knowledge attacks, in which the attackers see the honest updates of all clients:
+  * `minmax`: the AGR-agnostic Min-Max attack (Shejwalkar and Houmansadr, NDSS 2021). All attackers
+    send mean - gamma * u, where u is the unit vector of the mean honest update and gamma is the
+    largest value (binary search) for which the malicious update is no farther from
+    any honest update than the largest distance between two honest updates.
+  * `fang`: the full-knowledge trimmed-mean attack of Fang et al. (USENIX Security 2020). For every
+    coordinate, each attacker draws a value beyond the smallest (or largest) honest value, on the side
+    opposite to the direction of the mean honest update (b = 2), so the attackers send different
+    updates.
 * Attacker shares: 10% and 30% malicious clients, plus a no-attack setting.
 * Defenses: FedAvg (no defense), Krum, Multi-Krum, coordinate-wise median, trimmed mean,
   FLTrust (100-sample root set), cosine-similarity filter (mean - 1 std rule), and a
   committee-validation scheme with reputation weighting that emulates blockchain-native
   detection (5-member committee drawn each round; colluding members vote for malicious updates).
-* 3 seeds (1, 2, 3) per setting: 264 runs per dataset, 528 runs in total.
+* 3 seeds (1, 2, 3) per setting: 360 runs per dataset, 720 runs in total.
 
 ## Detection metrics (Table 13)
 
@@ -38,8 +47,8 @@ updates were rejected (`bfl_bench.py`, variables `tp`, `fp`, `fn`, `tn`):
 Table 13 reports the mean of these two values over the three seeds. Rules that keep a fixed
 number of updates give fixed rates by construction: Krum keeps one update per round, so its
 false-positive rate is 44/45 (10% attackers) or 34/35 (30% attackers); Multi-Krum always
-discards m updates, so when it accepts every ALIE update its false-positive rate is 5/45 or
-15/35. Table 13 lists Multi-Krum, FLTrust, the cosine filter and the committee; Krum (fixed
+discards f updates (f = number of malicious clients), so when it accepts every malicious update
+its false-positive rate is 5/45 or 15/35. Table 13 lists Multi-Krum, FLTrust, the cosine filter and the committee; Krum (fixed
 rates, see above) is in `results.csv` but not in Table 13, and the median and the trimmed mean
 do not accept or reject whole updates.
 
@@ -52,7 +61,7 @@ do not accept or reject whole updates.
 | `gas_bench.py` | Gas cost of the on-chain layer on a local in-memory Ethereum chain |
 | `FLLedger.sol` | Smart contract measured by `gas_bench.py` (compiled bytecode is embedded) |
 | `requirements-lock.txt` | Exact package versions used to produce `results.csv` |
-| `results.csv` | Results of the 528 runs reported in the paper (Tables 12 and 13) |
+| `results.csv` | Results of the 720 runs reported in the paper (Tables 12 and 13) |
 | `gas_results.csv` | Gas measurements reported in the paper |
 | `summary/` | Tables and figure produced by `summarize.py` |
 
@@ -62,7 +71,8 @@ Python 3.10 or newer.
 
     pip install -r requirements.txt               # or requirements-lock.txt for the exact versions used
     python bfl_bench.py --quick                  # smoke test, about 2 minutes
-    python bfl_bench.py --datasets mnist fmnist  # full grid (528 runs), about 14 hours on a laptop CPU
+    python bfl_bench.py --datasets mnist fmnist  # full grid (720 runs), about 19 hours on a laptop CPU
+    python bfl_bench.py --datasets mnist fmnist --attacks minmax fang  # only the two full-knowledge attacks (192 runs)
     python summarize.py                          # tables and figures in summary/
 
 `summary/table_accuracy_<dataset>.csv` corresponds to Table 12 and
@@ -71,7 +81,9 @@ Python 3.10 or newer.
 options of `bfl_bench.py` with the defaults used in the paper; `python bfl_bench.py --help`
 lists them. Runs are appended to `results.csv`, so an interrupted run can be resumed by
 starting the same command again. Results were produced on CPU (PyTorch 2.14, Python 3.14);
-small numerical differences can occur on other hardware.
+small numerical differences can occur on other hardware. The 192 runs of the `minmax` and `fang`
+attacks, added in release v1.1, were produced on a second Windows machine (CPU, Python 3.14) with
+the packages in `requirements.txt`.
 
 Gas measurement (on Windows the install needs the Microsoft C++ Build Tools;
 it installs directly on Linux, macOS and Google Colab):
@@ -89,6 +101,11 @@ identity management or production consensus.
 This is a small, illustrative benchmark: two image datasets, 50 clients, a small model, and a
 simplified emulation of committee-based blockchain validation. It is meant to show how the defense families
 compare under identical conditions, not to rank published systems.
+
+## Changes in v1.1
+
+* Two full-knowledge attacks, Min-Max (`minmax`) and Fang (`fang`): 192 new runs, 720 in total.
+* Notation in this README aligned with the paper (f = number of malicious clients).
 
 ## License
 
